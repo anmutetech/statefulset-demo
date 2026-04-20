@@ -1,0 +1,12 @@
+# A utility pod with DNS tools for testing DNS resolution
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dns-test
+spec:
+  containers:
+    - name: dnsutils
+      image: registry.k8s.io/e2e-test-images/jessie-dnsutils:1.7
+      command:
+        - sleep
+        - "3600"

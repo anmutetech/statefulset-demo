@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+data:
+  # Primary server configuration
+  primary.conf: |
+    listen_addresses = '*'
+    wal_level = replica
+    max_wal_senders = 3
+    hot_standby = on
+
+  # Replica configuration
+  pg_hba.conf: |
+    # Allow replication connections from any pod in the cluster
+    local   all             all                                     trust
+    host    all             all             0.0.0.0/0               md5
+    host    replication     replicator      0.0.0.0/0               md5
+
+  # Init script for the primary
+  init-primary.sh: |
+    #!/bin/bash
+    set -e
+
+    # Only run on the primary (pod-0)
+    if [ "$(hostname)" = "postgres-0" ]; then
+      echo "Initializing as PRIMARY"
+
+      # Create replication user if it doesn't exist
+      psql -U postgres -c "
+        DO \$\$
+        BEGIN
+          IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
+            CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'replpass';
+          END IF;
+        END
+        \$\$;
+      "
+
+      # Create a sample database and table
+      psql -U postgres -c "CREATE DATABASE appdb;" 2>/dev/null || true
+      psql -U postgres -d appdb -c "
+        CREATE TABLE IF NOT EXISTS orders (
+          id SERIAL PRIMARY KEY,
+          product VARCHAR(100),
+          quantity INTEGER,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      "
+      echo "Primary initialization complete"
+    fi
+
+  # Setup script that runs before PostgreSQL starts
+  setup.sh: |
+    #!/bin/bash
+    set -e
+
+    PGDATA="/var/lib/postgresql/data/pgdata"
+
+    if [ "$(hostname)" = "postgres-0" ]; then
+      # PRIMARY: Use standard init
+      echo "Starting as PRIMARY (postgres-0)"
+    else
+      # REPLICA: Bootstrap from primary if data dir is empty
+      if [ ! -f "$PGDATA/PG_VERSION" ]; then
+        echo "Starting as REPLICA ($(hostname)) — bootstrapping from primary..."
+        rm -rf "$PGDATA"/*
+
+        PGPASSWORD=replpass pg_basebackup \
+          -h postgres-0.postgres-headless \
+          -U replicator \
+          -D "$PGDATA" \
+          -Fp -Xs -P -R
+
+        echo "Replication bootstrap complete"
+      else
+        # Ensure standby.signal exists for restarts
+        touch "$PGDATA/standby.signal"
+      fi
+    fi
