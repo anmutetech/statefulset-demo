@@ -57,6 +57,17 @@ Each downstream service reads from the same topic independently. If the analytic
           └─────────┘  └───────┘  └─────────┘
 ```
 
+### New Concepts in This Lab
+
+| Concept | What It Is |
+|---------|-----------|
+| **ZooKeeper** | A distributed coordination service. Kafka uses it to track which brokers are alive, which broker leads each partition, and cluster configuration. Think of it as the "control plane" for the Kafka cluster. |
+| **Broker** | A single Kafka server. Each broker stores a subset of the data (partitions) and serves producer/consumer requests. |
+| **Topic** | A named stream of events (like `order.events`). Producers write to topics, consumers read from them. |
+| **Partition** | A topic is split into partitions for parallelism. Each partition lives on a specific broker and has its own ordered log of events. |
+| **Replication Factor** | How many copies of each partition exist across brokers. Factor 3 means every event is stored on 3 brokers for fault tolerance. |
+| **ISR (In-Sync Replicas)** | The set of replicas that are fully caught up with the leader. If a broker fails, a new leader is elected from the ISR. |
+
 ### Why Kafka Needs StatefulSets
 
 1. **Broker ID** -- Each broker has a unique integer ID (0, 1, 2). We derive this from the pod ordinal (`kafka-0` becomes broker 0). If a broker restarted with a random ID, it would lose ownership of its partitions.
@@ -84,7 +95,9 @@ Verify the ensemble is healthy:
 kubectl exec zk-0 -- bash -c "echo ruok | nc localhost 2181"
 ```
 
-Expected: `imok`
+Expected: `imok` (ZooKeeper's way of saying "I'm OK").
+
+> **Troubleshooting:** If you get no response, the pod may still be starting. Wait 10 seconds and try again. Check `kubectl logs zk-0` if it persists.
 
 ZooKeeper is itself a StatefulSet -- each node needs a unique server ID (derived from pod ordinal), its own data directory, and stable DNS so the other nodes can find it for leader election.
 
@@ -110,10 +123,20 @@ Check that all brokers registered with ZooKeeper:
 kubectl exec kafka-0 -- kafka-broker-api-versions --bootstrap-server kafka-0.kafka-headless:9092
 ```
 
-List the brokers:
+If the command produces output (a list of API versions) without errors, the broker is healthy. Any timeout or connection error means the broker isn't ready yet.
+
+List the brokers registered in ZooKeeper:
 
 ```bash
 kubectl exec kafka-0 -- bash -c "echo dump | nc zk-0.zk-headless 2181 | grep broker"
+```
+
+Expected output (3 lines, one per broker):
+
+```
+/brokers/ids/0
+/brokers/ids/1
+/brokers/ids/2
 ```
 
 ## Step 4 -- Create the Order Events Topic

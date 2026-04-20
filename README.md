@@ -33,6 +33,23 @@ Here is what you will eventually be responsible for deploying:
 
 Both of these are stateful systems that cannot run as simple Deployments. By the end of this lab series, you will understand exactly why -- and you will have deployed both on EKS yourself.
 
+## Kubernetes Concepts Reference
+
+Labs 01-03 only require knowledge of Pods and Deployments. Labs 04-05 introduce a few more Kubernetes concepts. Here's a quick reference -- each concept is explained in context when it first appears, but this table is here if you need a refresher.
+
+| Concept | One-Line Explanation | First Used In |
+|---------|---------------------|---------------|
+| **Service** | A stable network endpoint that routes traffic to a set of pods | Lab 01 |
+| **Headless Service** | A Service with `clusterIP: None` that gives each pod its own DNS name instead of load-balancing | Lab 01 (explained in Lab 02) |
+| **PersistentVolumeClaim (PVC)** | A request for storage -- Kubernetes finds or creates an actual disk (EBS volume on EKS) to satisfy it | Lab 03 |
+| **VolumeClaimTemplate** | A PVC template inside a StatefulSet -- automatically creates a unique PVC for each pod | Lab 03 |
+| **StorageClass (`gp2`)** | Tells Kubernetes what type of disk to create -- `gp2` is the default EBS volume type on EKS | Lab 03 |
+| **ConfigMap** | Stores configuration files and scripts as key-value pairs that pods can mount as files | Lab 04 |
+| **Secret** | Like ConfigMap but for sensitive data (passwords); values are base64-encoded | Lab 04 |
+| **initContainer** | A container that runs once before the main container starts -- used for setup tasks | Lab 04 |
+| **Readiness Probe** | A health check that tells Kubernetes "this pod is ready to accept traffic" | Lab 04 |
+| **Liveness Probe** | A health check -- if it fails, Kubernetes restarts the pod | Lab 04 |
+
 ## How to Use This Lab
 
 Work through the labs **in order**. Each lab builds on concepts from the previous one.

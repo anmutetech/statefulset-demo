@@ -12,7 +12,10 @@ spec:
   selector:
     app: postgres
 ---
-# A regular service that points only to the primary — for write traffic
+# A regular service for connecting to the primary (postgres-0).
+# In a production setup you would use a tool like Patroni to dynamically
+# update which pod the "primary" service points to. For this lab, the
+# service routes to all pods and you connect to postgres-0 explicitly.
 apiVersion: v1
 kind: Service
 metadata:
@@ -25,7 +28,6 @@ spec:
       name: postgres
   selector:
     app: postgres
-    role: primary
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -42,8 +44,11 @@ spec:
       labels:
         app: postgres
     spec:
+      # --- initContainers ---
+      # An initContainer runs ONCE before the main container starts.
+      # Here it handles replica bootstrapping: copying data from the
+      # primary so the replica has a starting point for replication.
       initContainers:
-        # Run setup script to handle primary vs replica initialization
         - name: setup
           image: postgres:16
           command: ["bash", "/scripts/setup.sh"]
@@ -72,16 +77,13 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
-          # Primary-specific config
             - name: POSTGRES_HOST_AUTH_METHOD
               value: md5
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-            - name: scripts
-              mountPath: /scripts
-            - name: config
-              mountPath: /etc/postgresql/custom
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
           resources:
             requests:
               cpu: 250m
@@ -89,6 +91,9 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          # readinessProbe: Kubernetes uses this to know when the pod is
+          # ready to receive traffic. pg_isready checks if PostgreSQL is
+          # accepting connections.
           readinessProbe:
             exec:
               command:
@@ -97,6 +102,8 @@ spec:
                 - postgres
             initialDelaySeconds: 10
             periodSeconds: 5
+          # livenessProbe: Kubernetes uses this to detect if the pod is
+          # stuck or crashed. If it fails, the pod gets restarted.
           livenessProbe:
             exec:
               command:
@@ -112,17 +119,18 @@ spec:
             items:
               - key: setup.sh
                 path: setup.sh
-              - key: init-primary.sh
-                path: init-primary.sh
             defaultMode: 0755
-        - name: config
+        - name: init-scripts
           configMap:
             name: postgres-config
             items:
-              - key: primary.conf
-                path: primary.conf
-              - key: pg_hba.conf
-                path: pg_hba.conf
+              - key: init.sql
+                path: init.sql
+            defaultMode: 0755
+  # --- volumeClaimTemplates ---
+  # Each pod gets its own PersistentVolumeClaim (and therefore its own
+  # EBS volume). This is the StatefulSet feature that gives every
+  # database instance its own dedicated storage.
   volumeClaimTemplates:
     - metadata:
         name: data
