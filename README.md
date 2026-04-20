@@ -8,7 +8,7 @@ Your team lead has one requirement before you touch production: **understand Sta
 
 ## Prerequisites
 
-- A running EKS cluster (1.27+)
+- A running EKS cluster (1.27+) with the EBS CSI driver installed -- **[follow the EKS Setup Guide](lab-00-intro/EKS-SETUP.md)** if you don't have one yet
 - `kubectl` configured to talk to your cluster
 - Familiarity with **Pods** and **Deployments**
 - Basic understanding of YAML and the command line
@@ -62,24 +62,26 @@ Every lab follows the same format:
 
 ## EKS Cluster Setup
 
-If you don't have an EKS cluster yet, here's a quick setup using `eksctl`:
+If you don't have an EKS cluster, follow the **[EKS Setup Guide](lab-00-intro/EKS-SETUP.md)** for step-by-step instructions covering:
 
-```bash
-eksctl create cluster \
-  --name statefulset-lab \
-  --region us-east-1 \
-  --nodegroup-name workers \
-  --node-type t3.medium \
-  --nodes 3 \
-  --managed
-```
+1. Installing the required tools (AWS CLI, eksctl, kubectl)
+2. Configuring AWS credentials
+3. Creating a 3-node EKS cluster
+4. Installing the EBS CSI driver (required for Labs 03-05)
+5. Verifying everything works
 
 > **Note:** 3 nodes are recommended so you can see pods distributed across nodes, especially for the Kafka lab.
 
 ## Cleanup
 
-When you're done with all labs:
+When you're done with all labs, delete the cluster to stop AWS charges (~$0.30/hour):
 
 ```bash
+# Delete any remaining PVCs first (EBS volumes cost money)
+kubectl delete pvc --all
+
+# Delete the cluster and all associated resources
 eksctl delete cluster --name statefulset-lab --region us-east-1
 ```
+
+See the [EKS Setup Guide](lab-00-intro/EKS-SETUP.md#cluster-cleanup-when-you-are-done-with-all-labs) for detailed cleanup instructions.
