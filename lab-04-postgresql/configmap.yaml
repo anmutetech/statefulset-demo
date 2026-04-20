@@ -37,17 +37,51 @@ data:
         \$\$;
       "
 
-      # Create a sample database and table
-      psql -U postgres -c "CREATE DATABASE appdb;" 2>/dev/null || true
-      psql -U postgres -d appdb -c "
-        CREATE TABLE IF NOT EXISTS orders (
+      # Create the QuickBite database and tables
+      psql -U postgres -c "CREATE DATABASE quickbite;" 2>/dev/null || true
+      psql -U postgres -d quickbite -c "
+        CREATE TABLE IF NOT EXISTS restaurants (
           id SERIAL PRIMARY KEY,
-          product VARCHAR(100),
-          quantity INTEGER,
+          name VARCHAR(100) NOT NULL,
+          cuisine VARCHAR(50),
+          rating DECIMAL(2,1),
           created_at TIMESTAMP DEFAULT NOW()
         );
+
+        CREATE TABLE IF NOT EXISTS customers (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          email VARCHAR(100),
+          address TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+          id SERIAL PRIMARY KEY,
+          customer_id INTEGER REFERENCES customers(id),
+          restaurant_id INTEGER REFERENCES restaurants(id),
+          items TEXT NOT NULL,
+          total_amount DECIMAL(10,2) NOT NULL,
+          status VARCHAR(20) DEFAULT 'placed',
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+
+        -- Seed some restaurant data
+        INSERT INTO restaurants (name, cuisine, rating) VALUES
+          ('Thai Palace', 'Thai', 4.5),
+          ('Pizza Planet', 'Italian', 4.2),
+          ('Sushi Express', 'Japanese', 4.8),
+          ('Burger Barn', 'American', 4.0)
+        ON CONFLICT DO NOTHING;
+
+        -- Seed some customer data
+        INSERT INTO customers (name, email, address) VALUES
+          ('Alice Chen', 'alice@example.com', '123 Main St'),
+          ('Bob Martinez', 'bob@example.com', '456 Oak Ave'),
+          ('Carol Johnson', 'carol@example.com', '789 Pine Rd')
+        ON CONFLICT DO NOTHING;
       "
-      echo "Primary initialization complete"
+      echo "Primary initialization complete — QuickBite database ready"
     fi
 
   # Setup script that runs before PostgreSQL starts

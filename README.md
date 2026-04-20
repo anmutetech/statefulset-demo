@@ -1,6 +1,10 @@
-# Kubernetes StatefulSets Lab
+# QuickBite Platform Engineering: StatefulSets Lab
 
-A hands-on lab series that teaches you how organizations use **StatefulSets** in the real world — from the basics all the way to running databases and message brokers on EKS.
+Welcome to the QuickBite platform team. QuickBite is a food delivery platform that handles thousands of orders per day -- connecting hungry customers with local restaurants and delivery drivers in real time.
+
+You just joined as a **platform engineer**. The company is migrating from VMs to Kubernetes on EKS, and your first project is deploying the stateful backend services: **PostgreSQL** (order/restaurant/customer database) and **Kafka** (real-time order event streaming).
+
+Your team lead has one requirement before you touch production: **understand StatefulSets inside and out**. This lab series is your onboarding path.
 
 ## Prerequisites
 
@@ -20,15 +24,24 @@ A hands-on lab series that teaches you how organizations use **StatefulSets** in
 | 04 | [Real-World: PostgreSQL on EKS](lab-04-postgresql/README.md) | Intermediate | Deploy a PostgreSQL primary-replica cluster using StatefulSets |
 | 05 | [Real-World: Kafka on EKS](lab-05-kafka/README.md) | Intermediate | Deploy a multi-broker Kafka cluster with ZooKeeper on EKS |
 
+## The QuickBite Architecture
+
+Here is what you will eventually be responsible for deploying:
+
+- **PostgreSQL** -- stores orders, restaurants, customers, and driver data. Runs as a primary-replica cluster where the primary handles writes and replicas serve read traffic from the mobile app.
+- **Kafka** -- streams order lifecycle events (`order.placed`, `order.preparing`, `order.out_for_delivery`, `order.delivered`) so that the notification service, driver dispatch, and analytics pipeline all react in real time.
+
+Both of these are stateful systems that cannot run as simple Deployments. By the end of this lab series, you will understand exactly why -- and you will have deployed both on EKS yourself.
+
 ## How to Use This Lab
 
 Work through the labs **in order**. Each lab builds on concepts from the previous one.
 
 Every lab follows the same format:
-1. **Concept** — Short explanation of what you're learning
-2. **Deploy** — Apply the manifests and observe behavior
-3. **Explore** — Guided exercises to deepen understanding
-4. **Clean Up** — Tear down resources before moving on
+1. **Concept** -- Short explanation of what you're learning
+2. **Deploy** -- Apply the manifests and observe behavior
+3. **Explore** -- Guided exercises to deepen understanding
+4. **Clean Up** -- Tear down resources before moving on
 
 ## EKS Cluster Setup
 
